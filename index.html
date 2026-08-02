@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Gemini Shorts 8K Thumbnail Studio</title>
+
+
+<!-- ZIP SUPPORT -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+
+<style>
+
+*{
+box-sizing:border-box;
+font-family:Inter,Arial,sans-serif;
+}
+
+
+body{
+
+margin:0;
+
+min-height:100vh;
+
+background:
+radial-gradient(circle at top,#4338ca,#020617 70%);
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+color:white;
+
+}
+
+
+
+.app{
+
+width:95%;
+
+max-width:1100px;
+
+padding:35px;
+
+border-radius:35px;
+
+background:
+
+rgba(255,255,255,.08);
+
+backdrop-filter:
+
+blur(25px);
+
+
+border:
+
+1px solid rgba(255,255,255,.15);
+
+
+box-shadow:
+
+0 40px 100px #000;
+
+}
+
+
+
+.logo{
+
+font-size:42px;
+
+font-weight:900;
+
+
+background:
+
+linear-gradient(
+90deg,
+#60a5fa,
+#c084fc,
+#22d3ee
+);
+
+
+-webkit-background-clip:text;
+
+color:transparent;
+
+}
+
+
+
+.subtitle{
+
+margin-top:12px;
+
+color:#cbd5e1;
+
+line-height:1.5;
+
+}
+
+
+
+.upload{
+
+margin-top:35px;
+
+height:230px;
+
+border:
+
+2px dashed #64748b;
+
+
+border-radius:30px;
+
+
+display:flex;
+
+flex-direction:column;
+
+justify-content:center;
+
+align-items:center;
+
+
+cursor:pointer;
+
+transition:.3s;
+
+}
+
+
+
+.upload:hover{
+
+background:
+rgba(255,255,255,.08);
+
+
+border-color:#60a5fa;
+
+}
+
+
+
+.upload h2{
+
+font-size:30px;
+
+}
+
+
+
+.upload span{
+
+color:#94a3b8;
+
+}
+
+
+
+input{
+
+display:none;
+
+}
+
+
+
+.status{
+
+margin-top:25px;
+
+text-align:center;
+
+color:#94a3b8;
+
+}
+
+
+
+#zipButton{
+
+display:none;
+
+width:100%;
+
+margin-top:25px;
+
+padding:18px;
+
+border:0;
+
+border-radius:40px;
+
+
+background:
+
+linear-gradient(
+90deg,
+#16a34a,
+#2563eb
+);
+
+
+color:white;
+
+font-size:18px;
+
+cursor:pointer;
+
+}
+
+
+
+.gallery{
+
+margin-top:35px;
+
+display:grid;
+
+grid-template-columns:
+
+repeat(4,1fr);
+
+
+gap:15px;
+
+}
+
+
+
+.card{
+
+position:relative;
+
+background:#111827;
+
+padding:8px;
+
+border-radius:20px;
+
+overflow:hidden;
+
+}
+
+
+
+.card img{
+
+width:100%;
+
+aspect-ratio:9/16;
+
+object-fit:cover;
+
+border-radius:16px;
+
+}
+
+
+
+.download{
+
+position:absolute;
+
+top:12px;
+
+left:12px;
+
+z-index:5;
+
+
+background:
+
+rgba(37,99,235,.9);
+
+
+padding:
+
+6px 12px;
+
+
+font-size:12px;
+
+
+border-radius:20px;
+
+
+color:white;
+
+
+text-decoration:none;
+
+}
+
+
+
+video,
+canvas{
+
+display:none;
+
+}
+
+
+
+
+@media(max-width:900px){
+
+.gallery{
+
+grid-template-columns:
+repeat(3,1fr);
+
+}
+
+}
+
+
+
+@media(max-width:600px){
+
+.app{
+
+padding:20px;
+
+}
+
+
+.logo{
+
+font-size:30px;
+
+}
+
+
+.gallery{
+
+grid-template-columns:
+
+repeat(2,1fr);
+
+gap:10px;
+
+}
+
+
+
+.download{
+
+font-size:11px;
+
+padding:5px 9px;
+
+}
+
+}
+
+
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="app">
+
+
+<div class="logo">
+
+✨ Gemini Shorts 8K Studio
+
+</div>
+
+
+
+<div class="subtitle">
+
+Upload a vertical video and automatically generate
+16 enhanced 8K YouTube Shorts thumbnails.
+
+</div>
+
+
+
+
+<label class="upload">
+
+
+<input
+id="videoInput"
+type="file"
+accept="video/*">
+
+
+<h2>
+🎬 Upload Video
+</h2>
+
+
+<span>
+Automatic generation starts instantly
+</span>
+
+
+</label>
+
+
+
+
+<button id="zipButton"
+onclick="downloadZIP()">
+
+⬇ Download All 8K Thumbnails ZIP
+
+</button>
+
+
+
+<div id="status"
+class="status">
+
+Waiting for video...
+
+</div>
+
+
+
+<div id="gallery"
+class="gallery">
+
+</div>
+
+
+
+<video id="video"></video>
+
+<canvas id="canvas"></canvas>
+
+
+
+<script>
+
+let selectedVideo = null;
+
+let thumbnailFiles = [];
+
+
+const input =
+document.getElementById("videoInput");
+
+const video =
+document.getElementById("video");
+
+const canvas =
+document.getElementById("canvas");
+
+const ctx =
+canvas.getContext("2d");
+
+const gallery =
+document.getElementById("gallery");
+
+const status =
+document.getElementById("status");
+
+const zipButton =
+document.getElementById("zipButton");
+
+
+
+// AUTO GENERATE AFTER UPLOAD
+
+input.addEventListener(
+"change",
+async function(e){
+
+
+selectedVideo =
+e.target.files[0];
+
+
+if(selectedVideo){
+
+status.innerHTML =
+"🎬 Video detected... creating 8K thumbnails";
+
+
+await generateThumbnails();
+
+}
+
+
+});
+
+
+
+
+// MAIN GENERATOR
+
+
+async function generateThumbnails(){
+
+
+gallery.innerHTML="";
+
+thumbnailFiles=[];
+
+
+
+video.src =
+URL.createObjectURL(
+selectedVideo
+);
+
+
+video.muted=true;
+
+
+
+await new Promise(resolve=>{
+
+video.onloadedmetadata =
+resolve;
+
+});
+
+
+
+let duration =
+video.duration;
+
+
+
+
+// 16 unique moments
+
+let moments=[
+
+0.05,
+0.10,
+0.15,
+0.20,
+
+0.28,
+0.34,
+0.40,
+0.46,
+
+0.55,
+0.62,
+0.68,
+0.74,
+
+0.82,
+0.88,
+0.94,
+0.98
+
+];
+
+
+
+// 8K vertical canvas
+
+canvas.width = 4320;
+
+canvas.height = 7680;
+
+
+
+for(
+let i=0;
+i<moments.length;
+i++
+){
+
+
+
+status.innerHTML =
+`✨ Rendering 8K thumbnail ${i+1}/16`;
+
+
+
+video.currentTime =
+duration * moments[i];
+
+
+
+await new Promise(resolve=>{
+
+video.onseeked =
+resolve;
+
+});
+
+
+
+draw8KFrame();
+
+
+enhanceImage();
+
+
+sharpenImage();
+
+
+
+let image =
+canvas.toDataURL(
+"image/jpeg",
+1.0
+);
+
+
+
+createThumbnail(
+image,
+i+1
+);
+
+
+}
+
+
+
+status.innerHTML =
+"✅ 16 Enhanced 8K thumbnails completed";
+
+
+zipButton.style.display =
+"block";
+
+
+}
+
+
+
+
+
+// SMART 9:16 CROP
+
+
+function draw8KFrame(){
+
+
+let vw =
+video.videoWidth;
+
+
+let vh =
+video.videoHeight;
+
+
+let targetRatio =
+9/16;
+
+
+let sourceRatio =
+vw/vh;
+
+
+
+let sx,sy,sw,sh;
+
+
+
+if(sourceRatio > targetRatio){
+
+
+sh = vh;
+
+sw =
+vh * targetRatio;
+
+
+sx =
+(vw-sw)/2;
+
+
+sy=0;
+
+
+}
+
+else{
+
+
+sw=vw;
+
+
+sh =
+vw/targetRatio;
+
+
+sx=0;
+
+
+sy =
+(vh-sh)/2;
+
+
+}
+
+
+
+
+ctx.imageSmoothingEnabled = true;
+
+ctx.imageSmoothingQuality =
+"high";
+
+
+
+ctx.drawImage(
+
+video,
+
+sx,
+sy,
+sw,
+sh,
+
+
+0,
+0,
+
+
+4320,
+7680
+
+);
+
+
+
+}
+
+
+
+
+
+// COLOR ENHANCEMENT
+
+
+function enhanceImage(){
+
+
+
+let pixels =
+ctx.getImageData(
+
+0,
+0,
+4320,
+7680
+
+);
+
+
+
+let data =
+pixels.data;
+
+
+
+for(
+let i=0;
+i<data.length;
+i+=4
+){
+
+
+let r =
+data[i];
+
+
+let g =
+data[i+1];
+
+
+let b =
+data[i+2];
+
+
+
+// contrast
+
+r =
+((r-128)*1.18)+128;
+
+g =
+((g-128)*1.18)+128;
+
+b =
+((b-128)*1.18)+128;
+
+
+
+// saturation
+
+let avg =
+(r+g+b)/3;
+
+
+
+r =
+avg+(r-avg)*1.15;
+
+
+g =
+avg+(g-avg)*1.15;
+
+
+b =
+avg+(b-avg)*1.15;
+
+
+
+// brightness
+
+r+=8;
+
+g+=8;
+
+b+=8;
+
+
+
+data[i] =
+Math.max(
+0,
+Math.min(
+255,
+r
+)
+);
+
+
+
+data[i+1] =
+Math.max(
+0,
+Math.min(
+255,
+g
+)
+);
+
+
+
+data[i+2] =
+Math.max(
+0,
+Math.min(
+255,
+b
+)
+);
+
+
+
+}
+
+
+
+ctx.putImageData(
+pixels,
+0,
+0
+);
+
+
+}
+
+
+
+
+
+// DETAIL BOOST
+
+
+function sharpenImage(){
+
+
+let img =
+ctx.getImageData(
+
+0,
+0,
+4320,
+7680
+
+);
+
+
+
+let data =
+img.data;
+
+
+
+for(
+let i=0;
+i<data.length;
+i+=4
+){
+
+
+
+data[i] =
+Math.min(
+255,
+data[i]*1.08
+);
+
+
+
+data[i+1] =
+Math.min(
+255,
+data[i+1]*1.08
+);
+
+
+
+data[i+2] =
+Math.min(
+255,
+data[i+2]*1.08
+);
+
+
+
+}
+
+
+
+ctx.putImageData(
+img,
+0,
+0
+);
+
+
+}
+
+
+
+
+
+// THUMBNAIL CARD
+
+
+function createThumbnail(
+image,
+number
+){
+
+
+
+thumbnailFiles.push({
+
+name:
+`Shorts-Thumbnail-${number}-8K.jpg`,
+
+data:image
+
+});
+
+
+
+let card =
+document.createElement(
+"div"
+);
+
+
+
+card.className =
+"card";
+
+
+
+card.innerHTML = `
+
+<a
+class="download"
+
+download="Shorts-Thumbnail-${number}-8K.jpg"
+
+href="${image}">
+
+⬇ JPG
+
+</a>
+
+
+<img src="${image}">
+
+`;
+
+
+
+gallery.appendChild(card);
+
+
+
+}
+
+
+
+
+
+// ZIP DOWNLOAD
+
+
+async function downloadZIP(){
+
+
+status.innerHTML =
+"📦 Preparing ZIP file...";
+
+
+
+let zip =
+new JSZip();
+
+
+
+for(
+let item of thumbnailFiles
+){
+
+
+let base64 =
+item.data.split(",")[1];
+
+
+
+zip.file(
+
+item.name,
+
+base64,
+
+{
+
+base64:true
+
+}
+
+);
+
+
+}
+
+
+
+let blob =
+await zip.generateAsync({
+
+type:"blob"
+
+});
+
+
+
+saveAs(
+
+blob,
+
+"Gemini-Shorts-8K-Thumbnails.zip"
+
+);
+
+
+
+status.innerHTML =
+"✅ ZIP downloaded";
+
+
+}
+</script>
+
+</div>
+
+</body>
+
+</html>
